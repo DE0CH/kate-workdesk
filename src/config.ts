@@ -20,7 +20,7 @@ export const CONFIG = {
   appName: '教师工作台',
 
   /** Short tagline under the app name. */
-  tagline: '课堂 · 课表 · 待办 · 分层 · 声音 —— 一个都不少',
+  tagline: '把课堂安排好，把每一天过从容',
 
   /**
    * Teacher's display name for greetings. Empty by default (generic
