@@ -3,7 +3,6 @@ import { useStore } from '../store/store'
 import { useToast } from '../ui/toast'
 import Modal from '../ui/Modal'
 import { BELLS } from '../lib/constants'
-import { CLASS_VARIANT } from '../config'
 import { WEEKDAY_CN } from '../lib/constants'
 
 const clsShort = (c: string) => String(c || '').replace(/^七/, '')
@@ -11,6 +10,10 @@ const DAYS = ['一', '二', '三', '四', '五']
 
 export default function ScheduleView({ active }: { active: boolean }) {
   const courses = useStore((s) => s.courses)
+  const classNames = useStore((s) => s.settings.classNames)
+  // Chip colour follows the class's position in the class list (0 → lilac, 1 → rose),
+  // so any class names render correctly — not just the config defaults.
+  const variantClass = (cls: string) => (classNames.indexOf(cls) % 2 === 1 ? 'cls-b' : 'cls-a')
   const [edit, setEdit] = useState<{ wd: number; p: string } | null>(null)
 
   return (
@@ -69,11 +72,7 @@ export default function ScheduleView({ active }: { active: boolean }) {
                       const c = (courses[wd] || []).find((x) => x.p === b.p)
                       let cls = 'schp '
                       if (c) {
-                        cls += aux
-                          ? 'aux-cls'
-                          : CLASS_VARIANT[c.cls] === 'b'
-                            ? 'cls-b'
-                            : 'cls-a'
+                        cls += aux ? 'aux-cls' : variantClass(c.cls)
                       } else {
                         cls += aux ? 'aux-empty' : 'empty'
                       }

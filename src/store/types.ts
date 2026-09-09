@@ -40,6 +40,8 @@ export interface Settings {
   classNames: string[]
   scheduleNotes: string[]
   lockHash?: string
+  /** Per-user display name for the greeting; falls back to CONFIG.teacherName. */
+  teacherName?: string
 }
 
 export interface SoundState {
