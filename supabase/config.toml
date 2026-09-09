@@ -1,0 +1,4 @@
+# Supabase CLI project config.
+# The project ref ties `supabase` CLI commands (migrations) to the cloud
+# project. Full reference: https://supabase.com/docs/guides/cli/config
+project_id = "nsqcbacxwwkkyzoghbae"

@@ -66,5 +66,17 @@ configure them as environment variables in your host (e.g. Vercel).
 
 ## Deployment
 
-Static SPA — deploy `dist/` anywhere. On Vercel: framework preset **Vite**,
-build `npm run build`, output `dist`.
+Live (China-reachable, no ICP 备案): **https://kate.deyaochen.com**
+(Aliyun OSS Hong Kong + custom domain + HTTPS).
+
+Everything ships from this repo via GitHub Actions — **edit source, push to
+`main`, it deploys**:
+
+- **Frontend** (`.github/workflows/frontend.yml`): build + upload `dist/` to the OSS bucket.
+- **Database** (`.github/workflows/database.yml`): apply `supabase/migrations/**` via `supabase db push`.
+
+Full architecture, the one-time infra, the required GitHub secrets, and the
+**limitations** are documented in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+The build is a plain static SPA, so it can also be served from any static host
+(`npm run build` → `dist/`).

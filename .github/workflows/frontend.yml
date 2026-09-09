@@ -1,0 +1,79 @@
+name: Deploy frontend
+
+# Builds the SPA and uploads the static files to the Aliyun OSS Hong Kong
+# bucket, which is served over HTTPS at https://kate.deyaochen.com
+# (custom domain + cert bound to the bucket — a one-time setup, see
+# docs/DEPLOYMENT.md). Runs on any change to the app source.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tailwind.config.js'
+      - 'postcss.config.js'
+      - 'tsconfig*.json'
+      - '.github/workflows/frontend.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: frontend
+  cancel-in-progress: true
+
+env:
+  OSS_BUCKET: kate-workdesk-hk
+  OSS_ENDPOINT: oss-cn-hongkong.aliyuncs.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Guard — require Supabase config so we never ship a sync-less build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY secrets are not set — refusing to deploy a build without cloud sync."
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+        env:
+          # Public, build-time. Safe to expose in the client bundle.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Install ossutil
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/ossutil" https://gosspublic.alicdn.com/ossutil/1.7.16/ossutil64
+          chmod +x "$RUNNER_TEMP/ossutil"
+
+      - name: Upload to OSS
+        env:
+          OSS_AK_ID: ${{ secrets.ALIYUN_AK_ID }}
+          OSS_AK_SECRET: ${{ secrets.ALIYUN_AK_SECRET }}
+        run: |
+          OSSUTIL="$RUNNER_TEMP/ossutil -i $OSS_AK_ID -k $OSS_AK_SECRET -e $OSS_ENDPOINT"
+          # Upload everything first (content-types set from file extensions).
+          $OSSUTIL cp -r -f dist/ "oss://$OSS_BUCKET/"
+          # Hashed assets are immutable → cache forever.
+          $OSSUTIL set-meta -r -f "oss://$OSS_BUCKET/assets/" "Cache-Control:max-age=31536000"
+          # index.html must never be cached (it points at the newest hashes).
+          $OSSUTIL set-meta -f "oss://$OSS_BUCKET/index.html" "Cache-Control:no-cache"
+
+      - run: echo "Deployed → https://kate.deyaochen.com"
