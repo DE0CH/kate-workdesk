@@ -95,33 +95,55 @@ function SyncPanel({ onClose }: { onClose: () => void }) {
   return <SyncLogin onClose={onClose} />
 }
 
+// Keep the server deadline and request guard when the dialog is closed/reopened.
+let emailRetryUntil = 0
+let emailSending = false
+
 function SyncLogin({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState('')
   const [msg, setMsg] = useState('')
   const [msgColor, setMsgColor] = useState('var(--gr)')
+  const [now, setNow] = useState(Date.now)
+  const remaining = Math.max(0, Math.ceil((emailRetryUntil - now) / 1000))
+
+  useEffect(() => {
+    // A deadline stays accurate when background tabs throttle timers.
+    const timer = window.setInterval(() => setNow(Date.now()), 250)
+    return () => window.clearInterval(timer)
+  }, [])
 
   function send() {
+    if (emailSending || Date.now() < emailRetryUntil) return
     const em = email.trim()
     if (!/^\S+@\S+\.\S+$/.test(em)) {
       setMsgColor('var(--rd)')
       setMsg('邮箱格式看着不对哦 🤨')
       return
     }
+    emailSending = true
     setMsgColor('var(--muted)')
     setMsg('发送中…')
     sbSendEmail(em)
-      .then((ok) => {
-        if (ok) {
+      .then((result) => {
+        emailRetryUntil = Date.now() + result.retrySeconds * 1000
+        setNow(Date.now())
+        if (result.ok) {
           setMsgColor('var(--gr)')
           setMsg('✅ 已发送!去邮箱点邮件里的链接(标题类似 Confirm / Log In),点完会自动跳回这个页面')
         } else {
           setMsgColor('var(--rd)')
-          setMsg('发送失败,60 秒内只能发一次,稍等再试')
+          setMsg(result.retrySeconds > 0 ? '' : result.rateLimited
+            ? '发送太频繁，请稍后重试'
+            : '发送失败，请稍后重试')
         }
       })
       .catch(() => {
         setMsgColor('var(--rd)')
         setMsg('网络异常,稍后再试')
+      })
+      .finally(() => {
+        emailSending = false
+        setNow(Date.now())
       })
   }
 
@@ -147,12 +169,13 @@ function SyncLogin({ onClose }: { onClose: () => void }) {
         <button className="btn ghost" onClick={onClose}>
           取消
         </button>
-        <button className="btn pu" onClick={send}>
-          发送登录链接
+        <button className="btn pu" onClick={send} disabled={emailSending || remaining > 0}>
+          {emailSending ? '发送中…' : remaining > 0 ? `${remaining} 秒后重试` : '发送登录链接'}
         </button>
       </div>
       <div style={{ fontSize: 12.5, color: msgColor, marginTop: 8, minHeight: 18, lineHeight: 1.6 }}>
         {msg}
+        {remaining > 0 && <div>请等待 {remaining} 秒后再发送登录链接</div>}
       </div>
     </>
   )

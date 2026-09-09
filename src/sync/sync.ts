@@ -13,6 +13,7 @@
    ============================================================ */
 import { useStore } from '../store/store'
 import type { WorkbenchData } from '../store/types'
+import { emailRetrySeconds } from './emailRetry'
 
 const SYNC_URL = ((import.meta.env.VITE_SUPABASE_URL as string) || '').replace(/\/$/, '')
 const SYNC_ANON = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || ''
@@ -343,11 +344,21 @@ export function resolveFirstSync(choice: 'cloud' | 'local') {
 }
 
 /* Send the magic-link email. */
-export function sbSendEmail(email: string): Promise<boolean> {
-  return sbApi('/auth/v1/otp', {
+export async function sbSendEmail(email: string): Promise<{
+  ok: boolean
+  rateLimited: boolean
+  retrySeconds: number
+}> {
+  const response = await sbApi('/auth/v1/otp', {
     method: 'POST',
     body: JSON.stringify({ email, create_user: true }),
-  }).then((r) => r.ok)
+  })
+  const body: unknown = await response.json().catch(() => null)
+  return {
+    ok: response.ok,
+    rateLimited: response.status === 429,
+    retrySeconds: emailRetrySeconds(response.headers, body),
+  }
 }
 
 /* ---------------- startup ---------------- */
