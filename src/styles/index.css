@@ -123,6 +123,32 @@ header.top {
   font-weight: 600;
   max-width: 430px;
 }
+.sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--gr);
+  background: var(--grSoft);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+.sync-badge.off {
+  color: var(--muted);
+  background: #eef0f6;
+}
+.sync-badge .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gr);
+  display: inline-block;
+}
+.sync-badge.off .dot {
+  background: #b4b2a9;
+}
 
 nav.tabs {
   display: flex;

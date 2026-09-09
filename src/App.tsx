@@ -5,6 +5,7 @@ import CountdownStrip from './components/CountdownStrip'
 import Tabs, { type TabKey } from './components/Tabs'
 import Footer from './components/Footer'
 import LockScreen, { LOCK_DEF_HASH } from './components/LockScreen'
+import { SyncStartup } from './sync/SyncUI'
 import { useStore } from './store/store'
 import ScheduleView from './views/ScheduleView'
 import TodosView from './views/TodosView'
@@ -46,6 +47,7 @@ function AppInner() {
         <SoundView active={tab === 'snd'} />
         <Footer />
       </div>
+      <SyncStartup />
     </>
   )
 }

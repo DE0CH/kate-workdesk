@@ -1,6 +1,7 @@
 import { CONFIG } from '../config'
 import { QUOTES, WEEKDAY_CN } from '../lib/constants'
 import CatLogo from './CatLogo'
+import { SyncBadge } from '../sync/SyncUI'
 
 export default function Header() {
   const now = new Date()
@@ -30,6 +31,7 @@ export default function Header() {
         <div className="quote">
           “{en}” {zh}
         </div>
+        <SyncBadge />
       </div>
     </header>
   )

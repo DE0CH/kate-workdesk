@@ -5,6 +5,8 @@ import Modal from '../ui/Modal'
 import { hashStr } from '../lib/utils'
 import { todayStr } from '../lib/date'
 import type { WorkbenchData } from '../store/types'
+import { SyncFooterButton } from '../sync/SyncUI'
+import { syncReady } from '../sync/sync'
 
 const DOMAINS: (keyof WorkbenchData)[] = [
   'todos',
@@ -60,10 +62,15 @@ export default function Footer() {
 
   return (
     <div className="foot">
-      数据保存在本机浏览器 · 声音只在本地分析,绝不上传
+      {syncReady() ? '数据云端自动同步' : '数据保存在本机浏览器'} · 声音只在本地分析,绝不上传
       <br />
       <button onClick={exportBackup}>导出备份</button> ·{' '}
       <button onClick={importBackup}>导入备份</button> ·{' '}
+      {syncReady() && (
+        <>
+          <SyncFooterButton /> ·{' '}
+        </>
+      )}
       <button
         onClick={() => {
           if (
