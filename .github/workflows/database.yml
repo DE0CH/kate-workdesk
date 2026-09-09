@@ -1,15 +1,18 @@
 name: Deploy database
 
-# Applies SQL migrations in supabase/migrations/ to the Supabase project
-# using the Supabase CLI. Every database change is a new migration file in
-# the repo — edit source, push, and CI applies it. See docs/DEPLOYMENT.md.
+# Applies SQL migrations in supabase/migrations/ to the Supabase project via
+# the Management API (see supabase/apply-migrations.mjs). Every DB change is a
+# new migration file — edit source, push, CI applies it. See docs/DEPLOYMENT.md.
+#
+# Needs only one secret (SUPABASE_ACCESS_TOKEN) + one variable
+# (SUPABASE_PROJECT_REF). No database password / direct connection.
 
 on:
   push:
     branches: [main]
     paths:
       - 'supabase/migrations/**'
-      - 'supabase/config.toml'
+      - 'supabase/apply-migrations.mjs'
       - '.github/workflows/database.yml'
   workflow_dispatch: {}
 
@@ -20,22 +23,13 @@ concurrency:
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: supabase/setup-cli@v1
+      - uses: actions/setup-node@v4
         with:
-          version: latest
-
-      - name: Link project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          node-version: '20'
+      - name: Apply migrations
+        run: node supabase/apply-migrations.mjs
         env:
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-
-      - name: Apply migrations
-        run: supabase db push --password "$SUPABASE_DB_PASSWORD"
-        env:
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

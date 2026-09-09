@@ -74,11 +74,14 @@ Add these in the repo → Settings → Secrets and variables → Actions.
 | `ALIYUN_AK_ID` | A RAM user AccessKey ID with **`AliyunOSSFullAccess`** only (don't use the root key) |
 | `ALIYUN_AK_SECRET` | that RAM user's AccessKey Secret |
 | `SUPABASE_ACCESS_TOKEN` | A Supabase **personal access token** (Account → Access Tokens) — dedicated to CI |
-| `SUPABASE_DB_PASSWORD` | The project's database password (Project → Settings → Database; reset it there if unknown) |
 
 The two `VITE_*` values are compiled into the client bundle and are public by
-design. The rest are real secrets — scope them (RAM OSS-only user, a dedicated
-Supabase token) and rotate if leaked.
+design. The rest are real secrets — scope the Aliyun key to a RAM OSS-only
+user, dedicate the Supabase token to CI, and rotate if leaked.
+
+> The DB pipeline uses the Supabase **Management API** (not a direct database
+> connection), so **no database password is needed** in CI — just the access
+> token.
 
 ---
 
@@ -96,8 +99,9 @@ supabase migration new add_something
 git add supabase/migrations && git commit -m "db: add something" && git push
 ```
 You can also just hand-write a new timestamped `.sql` file in
-`supabase/migrations/`. CI runs `supabase db push`, which applies only
-migrations not yet recorded in the project's `schema_migrations` table.
+`supabase/migrations/`. CI runs `supabase/apply-migrations.mjs`, which applies —
+via the Supabase Management API — only the files not yet recorded in the
+`ci.applied_migrations` ledger, each wrapped in a transaction.
 
 ---
 
@@ -137,9 +141,13 @@ migrations not yet recorded in the project's `schema_migrations` table.
   the app at runtime — neither is seeded by migrations. One-off seeding (e.g.
   a teacher's initial setup) is done out-of-band with the service-role key, not
   through this pipeline.
-- **CI needs DB reachability.** `db push` connects to Postgres via the Supabase
-  pooler using `SUPABASE_DB_PASSWORD`. If a run fails to connect, check the
-  password secret and that the project is healthy.
+- **The Management-API token is account-wide.** Supabase has no project-scoped
+  credential that can run DDL, so CI uses a personal access token (account-
+  wide). Dedicate one to CI and rotate it if leaked; it's the one secret here
+  that can't be least-privilege-scoped.
+- **Statements that can't run in a transaction** (e.g. `CREATE INDEX
+  CONCURRENTLY`) will fail, because each migration is wrapped in a
+  transaction for atomicity. Split those out or adjust the runner.
 - **No PR preview / dry-run.** Migrations apply on push to `main`. There's no
   separate preview database; test risky migrations locally with
   `supabase start` first.
